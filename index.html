@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asistente de Atención Comercial</title>
+<style>
+  :root {
+    --azul: #2E75B6;
+    --azul-oscuro: #1F3A5F;
+    --celeste: #E6F0FA;
+    --fondo: #f4f6f8;
+    --texto: #1f2933;
+    --gris: #5f6b7a;
+    --borde: #d9e0e7;
+    --ok: #1e7a46;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--fondo);
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    color: var(--texto);
+    display: flex;
+    justify-content: center;
+  }
+  .app {
+    width: 100%;
+    max-width: 720px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    box-shadow: 0 0 24px rgba(0,0,0,.08);
+  }
+  header {
+    background: linear-gradient(135deg, var(--azul), var(--azul-oscuro));
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #fff; color: var(--azul);
+    display: grid; place-items: center;
+    font-size: 21px; flex: none;
+  }
+  header h1 { font-size: 17px; margin: 0; }
+  header p { font-size: 12px; margin: 2px 0 0; opacity: .88; }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--fondo);
+  }
+  .msg {
+    max-width: 88%;
+    padding: 11px 14px;
+    border-radius: 14px;
+    font-size: 14.5px;
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+  .bot {
+    align-self: flex-start;
+    background: #fff;
+    border: 1px solid var(--borde);
+    border-top-left-radius: 4px;
+  }
+  .user {
+    align-self: flex-end;
+    background: var(--azul);
+    color: #fff;
+    border-top-right-radius: 4px;
+  }
+  .confirmado { border-color: var(--ok); border-left-width: 4px; }
+  .msg a { color: var(--azul); text-decoration: underline; word-break: break-all; }
+  .msg ul { margin: 4px 0 0; padding-left: 20px; }
+  .msg li { margin: 2px 0; }
+  .campo { margin: 0 0 10px; }
+  .campo:last-child { margin-bottom: 0; }
+  .pendiente { color: var(--gris); font-style: italic; }
+  .nota { font-size: 12.5px; color: var(--gris); }
+
+  .escribiendo { display: flex; gap: 4px; padding: 14px; }
+  .escribiendo span {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--gris); opacity: .4;
+    animation: salto 1s infinite;
+  }
+  .escribiendo span:nth-child(2) { animation-delay: .15s; }
+  .escribiendo span:nth-child(3) { animation-delay: .3s; }
+  @keyframes salto { 0%,60%,100% { opacity: .3; transform: none; } 30% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .escribiendo span { animation: none; opacity: .7; } }
+
+  .sugerencias {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 10px 16px 0; background: #fff;
+    border-top: 1px solid var(--borde);
+    min-height: 10px;
+  }
+  .sugerencias button {
+    flex: none;
+    border: 1px solid var(--azul);
+    background: var(--celeste);
+    color: var(--azul-oscuro);
+    border-radius: 18px;
+    padding: 7px 13px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .sugerencias button:hover { background: var(--azul); color: #fff; }
+  .sugerencias button.accion { background: var(--azul-oscuro); color: #fff; border-color: var(--azul-oscuro); }
+  .sugerencias button.accion:hover { background: var(--azul); }
+
+  form {
+    display: flex; gap: 8px;
+    padding: 10px 16px 14px;
+    background: #fff;
+  }
+  input[type="text"] {
+    flex: 1;
+    border: 1px solid var(--borde);
+    border-radius: 22px;
+    padding: 11px 16px;
+    font-size: 15px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--azul); }
+  form button {
+    border: none; background: var(--azul); color: #fff;
+    border-radius: 22px; padding: 0 20px;
+    font-size: 14px; font-weight: bold; cursor: pointer;
+  }
+  form button:hover { background: var(--azul-oscuro); }
+  button:focus-visible, input:focus-visible { outline: 3px solid #f5b300; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo" aria-hidden="true">🛍️</div>
+    <div>
+      <h1>Asistente de Atención Comercial</h1>
+      <p>Cambios, entregas, fallas de producto y facturación</p>
+    </div>
+  </header>
+
+  <div id="chat" aria-live="polite"></div>
+
+  <div class="sugerencias" id="sugerencias"></div>
+  <form id="formulario" autocomplete="off">
+    <input type="text" id="entrada" placeholder="Escribe tu consulta…" aria-label="Escribe tu consulta">
+    <button type="submit">Enviar</button>
+  </form>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+   El bot habla con la aplicación web de Apps Script (Codigo.gs),
+   que lee la pestaña "base" y escribe en la pestaña "registro"
+   del archivo atencion_comercial. La hoja NO necesita ser pública.
+   ============================================================ */
+const CONFIG = {
+  URL_SCRIPT: 'https://script.google.com/macros/s/AKfycbyncGm_6CZmn2fVjQ-PJ-Ze0I6NQNRcoUszeYc30z64RbdNmMfhZXih2EOAPBdPkSU7YA/exec',
+  TOKEN: 'CAMBIA_ESTE_TOKEN',   // Debe ser IGUAL al TOKEN de Codigo.gs
+  CANAL: 'Web / Chat',          // Valor que se guarda en la columna "Canal" del registro
+  TIMEOUT_SEG: 30               // Apps Script puede tardar unos segundos en responder
+};
+
+const MSG_BIENVENIDA =
+  '¡Hola! Soy el asistente de Atención Comercial. Te oriento sobre cambios de prendas, entregas retrasadas, ' +
+  'productos con falla y facturas a nombre de empresa. Elige un tema abajo o escribe tu consulta.';
+
+const MSG_DESCONOCIDO =
+  'No encontré una respuesta para esa consulta en nuestra base. ' +
+  'Puedo registrarla para que un asesor te contacte.';
+
+const MSG_ERROR =
+  'En este momento no puedo conectarme con la base de atención. ' +
+  'Intenta nuevamente en unos minutos o comunícate con un asesor por nuestros canales oficiales.';
+
+const TEXTO_PENDIENTE = 'Dato no registrado en la base.';
+
+/* ---------- Estado ---------- */
+let TIPOS = [];            // tipos de consulta leídos de la pestaña "base"
+let ultimo = null;         // última consulta respondida: { tipo, texto }
+let registro = null;       // flujo de registro en curso: { paso, datos }
+let nombreCliente = '';
+let ocupado = false;
+
+/* ---------- Utilidades ---------- */
+const chat = document.getElementById('chat');
+const entrada = document.getElementById('entrada');
+
+function normalizar(t) {
+  return String(t == null ? '' : t).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9ñ\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function esSaludo(t) {
+  return /^(hola|holi|buenas|buenos dias|buen dia|buenas tardes|buenas noches|que tal|saludos|hey|hi)\b/.test(normalizar(t));
+}
+function quiereRegistrar(t) {
+  return /\b(registrar|registra|registrame|reclamo|queja|asesor|hablar con|contactenme|que me llamen)\b/.test(normalizar(t));
+}
+function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* ---------- Conexión con Apps Script ---------- */
+async function api(accion, datos) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(function () { ctrl.abort(); }, CONFIG.TIMEOUT_SEG * 1000);
+  try {
+    /* text/plain evita el "preflight" CORS, que Apps Script no soporta */
+    const resp = await fetch(CONFIG.URL_SCRIPT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ accion: accion, token: CONFIG.TOKEN }, datos || {})),
+      signal: ctrl.signal
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const d = await resp.json();
+    if (!d.ok) throw new Error(d.error || 'Error desconocido');
+    return d;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function cargarTipos() {
+  try {
+    const d = await api('tipos');
+    TIPOS = d.tipos || [];
+  } catch (e) {
+    console.error('No se pudieron leer los tipos de consulta:', e);
+    TIPOS = [];
+  }
+  pintarTipos();
+}
+
+/* ---------- Render ---------- */
+function ponerTextoConLinks(el, texto) {
+  const re = /(https?:\/\/[^\s<>"']+)/g;
+  let ultimoIdx = 0, m;
+  texto = String(texto == null ? '' : texto);
+  while ((m = re.exec(texto)) !== null) {
+    let url = m[0];
+    const fin = url.match(/[.,;:!?)]+$/);
+    if (fin) url = url.slice(0, -fin[0].length);
+    if (m.index > ultimoIdx) el.appendChild(document.createTextNode(texto.slice(ultimoIdx, m.index)));
+    const a = document.createElement('a');
+    a.href = url; a.textContent = url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    el.appendChild(a);
+    ultimoIdx = m.index + url.length;
+    re.lastIndex = ultimoIdx;
+  }
+  if (ultimoIdx < texto.length) el.appendChild(document.createTextNode(texto.slice(ultimoIdx)));
+}
+function agregarMensaje(clase) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + clase;
+  chat.appendChild(div);
+  return div;
+}
+function bajar() { chat.scrollTop = chat.scrollHeight; }
+function mensajeUsuario(texto) { agregarMensaje('user').textContent = texto; bajar(); }
+function mensajeBotTexto(texto, extraClase) {
+  const div = agregarMensaje('bot' + (extraClase ? ' ' + extraClase : ''));
+  ponerTextoConLinks(div, texto);
+  bajar();
+  return div;
+}
+function campo(contenedor, titulo, valor, preservarSaltos) {
+  const p = document.createElement('div');
+  p.className = 'campo';
+  if (preservarSaltos) p.style.whiteSpace = 'pre-line';
+  const b = document.createElement('strong');
+  b.textContent = titulo + ': ';
+  p.appendChild(b);
+  if (valor) {
+    ponerTextoConLinks(p, valor);
+  } else {
+    const s = document.createElement('span');
+    s.className = 'pendiente';
+    s.textContent = TEXTO_PENDIENTE;
+    p.appendChild(s);
+  }
+  contenedor.appendChild(p);
+}
+function lista(contenedor, titulo, items) {
+  const bloque = document.createElement('div');
+  bloque.className = 'campo';
+  const t = document.createElement('strong');
+  t.textContent = titulo + ':';
+  bloque.appendChild(t);
+  if (items.length) {
+    const ul = document.createElement('ul');
+    items.forEach(function (r) {
+      const li = document.createElement('li');
+      ponerTextoConLinks(li, r);
+      ul.appendChild(li);
+    });
+    bloque.appendChild(ul);
+  } else {
+    bloque.appendChild(document.createElement('br'));
+    const s = document.createElement('span');
+    s.className = 'pendiente';
+    s.textContent = TEXTO_PENDIENTE;
+    bloque.appendChild(s);
+  }
+  contenedor.appendChild(bloque);
+}
+
+/* Separa documentos por punto medio, punto y coma, salto de línea o coma (sin cortar lo que está entre paréntesis) */
+function separarLista(texto) {
+  const items = [];
+  let actual = '', prof = 0;
+  texto = String(texto || '');
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (c === '(') prof++;
+    if (c === ')' && prof > 0) prof--;
+    if ((c === ',' && prof === 0) || c === ';' || c === '\n' || c === '•' || c === '|' || c === '·') {
+      items.push(actual); actual = '';
+    } else { actual += c; }
+  }
+  items.push(actual);
+  return items.map(function (r) { return r.replace(/^[-*\s]+/, '').trim(); })
+    .filter(Boolean)
+    .map(function (r) { return r.charAt(0).toUpperCase() + r.slice(1); });
+}
+
+/* Personaliza el saludo de la respuesta modelo: "Hola [Nombre]," */
+function personalizar(texto) {
+  return String(texto || '').replace(/\s*\[nombre\]/gi, nombreCliente ? ' ' + nombreCliente : '');
+}
+
+function mensajeRespuesta(r) {
+  const div = agregarMensaje('bot');
+  campo(div, 'Consulta', r.tipo);
+  campo(div, 'Respuesta', personalizar(r.respuesta), true);
+  campo(div, 'Plazo y condiciones', r.plazo, true);
+  lista(div, 'Datos o documentos que debes enviar', separarLista(r.documentos));
+  bajar();
+}
+
+/* ---------- Sugerencias (botones inferiores) ---------- */
+function pintarChips(items) {
+  const cont = document.getElementById('sugerencias');
+  cont.innerHTML = '';
+  items.forEach(function (it) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = it.texto;
+    if (it.destacado) b.className = 'accion';
+    b.addEventListener('click', it.onClick);
+    cont.appendChild(b);
+  });
+}
+function pintarTipos() {
+  pintarChips(TIPOS.map(function (t) {
+    return { texto: t, onClick: function () { procesar(t, { tipo: t }); } };
+  }));
+}
+function pintarDespuesDeRespuesta() {
+  pintarChips([
+    { texto: 'Sí, registrar mi consulta', destacado: true, onClick: function () { iniciarRegistro(); } },
+    { texto: 'Hacer otra consulta', onClick: function () { pintarTipos(); mensajeBotTexto('Claro. ¿Qué otra consulta tienes?'); } }
+  ]);
+}
+
+/* ---------- Flujo de registro de la atención ---------- */
+const PASOS = ['nombre', 'documento', 'contacto', 'pedido', 'detalle'];
+const PREGUNTAS = {
+  nombre:    '¿Cuál es tu nombre completo?',
+  documento: '¿Cuál es tu DNI o RUC? (8 u 11 dígitos)',
+  contacto:  '¿A qué teléfono o correo te contactamos?',
+  pedido:    '¿Tienes un número de pedido o boleta? Si no lo tienes, toca «No tengo».',
+  detalle:   'Cuéntame brevemente tu caso. Si prefieres, uso tu consulta anterior.'
+};
+
+function iniciarRegistro() {
+  registro = { paso: 0, datos: {} };
+  mensajeBotTexto('Con gusto registro tu consulta. Usaremos tus datos solo para dar seguimiento a tu caso. ' +
+                  'Puedes escribir «cancelar» en cualquier momento.');
+  preguntarPaso();
+}
+
+function preguntarPaso() {
+  const paso = PASOS[registro.paso];
+  mensajeBotTexto(PREGUNTAS[paso]);
+  const chips = [{ texto: 'Cancelar', onClick: function () { procesar('cancelar'); } }];
+  if (paso === 'pedido') chips.unshift({ texto: 'No tengo', destacado: true, onClick: function () { procesar('no tengo'); } });
+  if (paso === 'detalle' && ultimo && ultimo.texto) {
+    chips.unshift({ texto: 'Usar mi consulta anterior', destacado: true, onClick: function () { procesar(ultimo.texto); } });
+  }
+  pintarChips(chips);
+  entrada.focus();
+}
+
+function validar(paso, texto) {
+  const t = texto.trim();
+  if (paso === 'nombre') {
+    return t.length >= 3 && /[a-záéíóúñ]/i.test(t) ? null : 'Escribe tu nombre completo (mínimo 3 letras).';
+  }
+  if (paso === 'documento') {
+    const d = t.replace(/\s|-/g, '');
+    return /^(\d{8}|\d{11})$/.test(d) ? null : 'El DNI tiene 8 dígitos y el RUC tiene 11. Revisa e inténtalo de nuevo.';
+  }
+  if (paso === 'contacto') {
+    const esCorreo = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
+    const esTel = t.replace(/[\s\-+()]/g, '').match(/^\d{7,12}$/);
+    return esCorreo || esTel ? null : 'Escribe un correo válido (nombre@dominio.com) o un teléfono de 7 a 12 dígitos.';
+  }
+  if (paso === 'detalle') {
+    return t.length >= 5 ? null : 'Cuéntame un poco más sobre tu caso (mínimo 5 caracteres).';
+  }
+  return null;
+}
+
+async function manejarRegistro(texto) {
+  const paso = PASOS[registro.paso];
+  if (/^(cancelar|cancela|salir)$/.test(normalizar(texto))) {
+    registro = null;
+    mensajeBotTexto('Listo, cancelé el registro. No guardé ningún dato. ¿En qué más te ayudo?');
+    pintarTipos();
+    return;
+  }
+  if (paso === 'pedido') {
+    registro.datos.pedido = /^(no tengo|no|ninguno|no se|no sé)$/.test(normalizar(texto)) ? '' : texto.trim();
+  } else {
+    const error = validar(paso, texto);
+    if (error) { mensajeBotTexto(error); return; }
+    registro.datos[paso] = texto.trim();
+    if (paso === 'nombre') nombreCliente = texto.trim().split(/\s+/)[0];
+  }
+  registro.paso++;
+  if (registro.paso < PASOS.length) { preguntarPaso(); return; }
+  await enviarRegistro();
+}
+
+async function enviarRegistro() {
+  const typing = mostrarEscribiendo();
+  pintarChips([]);
+  const d = registro.datos;
+  try {
+    const r = await api('registrar', {
+      canal: CONFIG.CANAL,
+      cliente: d.nombre,
+      documento: d.documento,
+      contacto: d.contacto,
+      pedido: d.pedido || '',
+      tipo: (ultimo && ultimo.tipo) || 'Otra consulta',
+      detalle: d.detalle
+    });
+    typing.remove();
+    const div = agregarMensaje('bot confirmado');
+    campo(div, 'Consulta registrada', r.id || ('Fila ' + r.fila));
+    const p = document.createElement('div');
+    p.className = 'campo';
+    p.textContent = 'Gracias, ' + (nombreCliente || 'cliente') + '. Un asesor se comunicará contigo por ' + d.contacto + '. Guarda tu código para el seguimiento.';
+    div.appendChild(p);
+    bajar();
+    registro = null;
+    pintarTipos();
+  } catch (err) {
+    console.error('Error al registrar:', err);
+    typing.remove();
+    mensajeBotTexto('No pude guardar tu consulta por un problema de conexión. Tus datos siguen aquí: toca «Reintentar» para enviarlos de nuevo.');
+    pintarChips([
+      { texto: 'Reintentar', destacado: true, onClick: function () { enviarRegistro(); } },
+      { texto: 'Cancelar', onClick: function () { procesar('cancelar'); } }
+    ]);
+  }
+}
+
+/* ---------- Conversación ---------- */
+function mostrarEscribiendo() {
+  const typing = agregarMensaje('bot');
+  typing.classList.add('escribiendo');
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  bajar();
+  return typing;
+}
+
+/* opciones.tipo: consulta exacta por tipo (botones); si no, búsqueda por texto libre */
+async function procesar(texto, opciones) {
+  texto = texto.trim();
+  if (!texto || ocupado) return;
+  ocupado = true;
+  try {
+    mensajeUsuario(texto);
+
+    if (registro) { await manejarRegistro(texto); return; }
+
+    if (esSaludo(texto)) {
+      await esperar(300);
+      mensajeBotTexto(MSG_BIENVENIDA);
+      pintarTipos();
+      return;
+    }
+    if (quiereRegistrar(texto) && !(opciones && opciones.tipo)) {
+      if (!ultimo) ultimo = { tipo: 'Otra consulta', texto: '' };
+      iniciarRegistro();
+      return;
+    }
+
+    const typing = mostrarEscribiendo();
+    try {
+      const r = await api('consultar', opciones && opciones.tipo ? { tipo: opciones.tipo } : { texto: texto });
+      typing.remove();
+      if (r.encontrado) {
+        ultimo = { tipo: r.tipo, texto: texto };
+        mensajeRespuesta(r);
+        mensajeBotTexto('¿Quieres que registre tu consulta para que un asesor le dé seguimiento?');
+        pintarDespuesDeRespuesta();
+      } else {
+        ultimo = { tipo: 'Otra consulta', texto: texto };
+        mensajeBotTexto(MSG_DESCONOCIDO);
+        pintarChips([
+          { texto: 'Registrar mi consulta', destacado: true, onClick: function () { iniciarRegistro(); } },
+          { texto: 'Ver los temas disponibles', onClick: function () { pintarTipos(); } }
+        ]);
+      }
+    } catch (err) {
+      console.error('Error al consultar:', err);
+      typing.remove();
+      mensajeBotTexto(MSG_ERROR);
+    }
+  } finally {
+    ocupado = false;
+  }
+}
+
+document.getElementById('formulario').addEventListener('submit', function (ev) {
+  ev.preventDefault();
+  const valor = entrada.value;
+  entrada.value = '';
+  procesar(valor);
+});
+
+mensajeBotTexto(MSG_BIENVENIDA);
+cargarTipos();
+</script>
+</body>
+</html>
